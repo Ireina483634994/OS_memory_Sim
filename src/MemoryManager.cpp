@@ -139,6 +139,16 @@ void MemoryManager::showStats() const {
               << ", Max Free Block: " << stats.maxFreeBlock
               << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
               << stats.externalFragmentation << "\n";
+    double externalFrag = 0.0;
+    if (freeTotal > 0) {
+        externalFrag = 1.0 - static_cast<double>(maxFree) / static_cast<double>(freeTotal);
+    }
+
+    std::cout << "Free Blocks: " << freeCount
+              << ", Total Free: " << freeTotal
+              << ", Max Free Block: " << maxFree
+              << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
+              << externalFrag << "\n";
 }
 
 

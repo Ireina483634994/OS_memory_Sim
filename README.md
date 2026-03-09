@@ -11,6 +11,7 @@
 - `src/MemoryManager.cpp`：分配/释放/合并/统计实现
 - `src/main.cpp`：CLI 与 workload/compare 框架
 - `workloads/*.txt`：演示脚本（含 first/best/worst/compare）
+- `workloads/*.txt`：演示脚本
 
 ## 编译
 

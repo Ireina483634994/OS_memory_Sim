@@ -1,0 +1,12 @@
+# 场景：给 worst-fit 预留大空洞，观察其倾向从最大空闲块切分
+alloc 31 120
+alloc 32 180
+alloc 33 200
+free 32
+alloc 34 60
+alloc 35 50
+free 31
+alloc 36 100
+alloc 37 90
+show
+stats

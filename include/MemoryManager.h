@@ -21,6 +21,14 @@ struct MemoryBlock {
 
 enum class Algorithm { FIRST_FIT, BEST_FIT, WORST_FIT };
 
+
+struct MemoryStats {
+    int freeBlocks;
+    int totalFree;
+    int maxFreeBlock;
+    double externalFragmentation;
+};
+
 class MemoryManager {
 public:
     // 构造函数：初始化一个总大小为 totalSize 的内存空闲区域（从地址 0 开始）没有返回值，函数名必须和class类名相同，这是一个public成员函数，外部可以访问
@@ -42,6 +50,7 @@ public:
     // 可视化 / 统计
     void showMemoryMap() const;//ASCII可视化
     void showStats() const;//碎片统计
+    MemoryStats getStats() const;// 统计数据（便于 compare 等功能）
 
 
 private:
@@ -63,6 +72,7 @@ private:
     //这里的splitBlock函数是将合适的空闲block进行切分，block的大小可能大于等于req，如果大于req，就切分出一个大小为req的块来分配给进程，剩余的部分继续作为一个空闲块存在链表中；如果block的大小等于req，就直接分配给进程，不需要切分。
     void coalesce(MemoryBlock* block);               // 合并 block 与相邻空闲块（prev/next）
     void clearAll();                                 // 析构时清理链表
+    bool isValidRequest(int pid, int reqSize) const; // 校验输入参数是否合法
 };
 
 #endif // MEMORY_MANAGER_H

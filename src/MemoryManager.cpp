@@ -32,9 +32,28 @@ void MemoryManager::clearAll() {
 }
 
 
+// 参数校验：请求大小需大于 0，pid 需非负
+bool MemoryManager::isValidRequest(int pid, int reqSize) const {
+    if (pid < 0) {
+        std::cout << "Error: PID must be non-negative.\n";
+        return false;
+    }
+    if (reqSize <= 0) {
+        std::cout << "Error: requested size must be positive.\n";
+        return false;
+    }
+    if (reqSize > totalSize) {
+        std::cout << "Error: requested size exceeds total memory size.\n";
+        return false;
+    }
+    return true;
+}
+
 // 分配函数，要从内存的空闲区域分配reqSize大小的内存给pid的进程使用，使用algo策略（成功返回true，失败返回false）
 //这是一个public成员，外部可以使用
 bool MemoryManager::allocate(int pid, int reqSize, Algorithm algo) {
+    if (!isValidRequest(pid, reqSize)) return false;
+
     if (pidMap.count(pid) > 0) {
         std::cout << "Error: PID " << pid << " already allocated.\n";
         return false;
@@ -61,6 +80,11 @@ bool MemoryManager::allocate(int pid, int reqSize, Algorithm algo) {
 // 释放函数，要释放pid占用的内存，注意合并相邻空闲块
 //public成员函数，外部可以使用
 void MemoryManager::deallocate(int pid) {
+    if (pid < 0) {
+        std::cout << "Warning: PID must be non-negative.\n";
+        return;
+    }
+
     auto it = pidMap.find(pid);
     if (it == pidMap.end()) {
         std::cout << "Warning: PID " << pid << " not found.\n";
@@ -87,22 +111,34 @@ void MemoryManager::showMemoryMap() const {
     }//打印这个内存块的起始地址和结束地址，以及这个内存块是空闲的还是被哪个pid占用的，以及这个内存块的大小
 }
 
-// 统计函数，显示当前内存的碎片情况，包括空闲块数量、总空闲内存大小、最大空闲块大小等信息
-//public成员函数，外部可以使用
-void MemoryManager::showStats() const {
-    int freeCount = 0, freeTotal = 0, maxFree = 0;
+// 统计数据接口，便于 compare 等逻辑复用
+MemoryStats MemoryManager::getStats() const {
+    MemoryStats stats{0, 0, 0, 0.0};
     MemoryBlock* cur = head;
     while (cur) {
         if (cur->isFree) {
-            freeCount++;
-            freeTotal += cur->size;
-            maxFree = std::max(maxFree, cur->size);
+            stats.freeBlocks++;
+            stats.totalFree += cur->size;
+            stats.maxFreeBlock = std::max(stats.maxFreeBlock, cur->size);
         }
         cur = cur->next;
     }
-    std::cout << "Free Blocks: " << freeCount
-              << ", Total Free: " << freeTotal
-              << ", Max Free Block: " << maxFree << "\n";
+
+    if (stats.totalFree > 0) {
+        stats.externalFragmentation = 1.0 - static_cast<double>(stats.maxFreeBlock) / static_cast<double>(stats.totalFree);
+    }
+    return stats;
+}
+
+// 统计函数，显示当前内存的碎片情况，包括空闲块数量、总空闲内存大小、最大空闲块大小等信息
+//public成员函数，外部可以使用
+void MemoryManager::showStats() const {
+    MemoryStats stats = getStats();
+    std::cout << "Free Blocks: " << stats.freeBlocks
+              << ", Total Free: " << stats.totalFree
+              << ", Max Free Block: " << stats.maxFreeBlock
+              << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
+              << stats.externalFragmentation << "\n";
 }
 
 

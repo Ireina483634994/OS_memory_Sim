@@ -21,6 +21,14 @@ struct MemoryBlock {
 
 enum class Algorithm { FIRST_FIT, BEST_FIT, WORST_FIT };
 
+
+struct MemoryStats {
+    int freeBlocks;
+    int totalFree;
+    int maxFreeBlock;
+    double externalFragmentation;
+};
+
 class MemoryManager {
 public:
     // 构造函数：初始化一个总大小为 totalSize 的内存空闲区域（从地址 0 开始）没有返回值，函数名必须和class类名相同，这是一个public成员函数，外部可以访问
@@ -42,6 +50,7 @@ public:
     // 可视化 / 统计
     void showMemoryMap() const;//ASCII可视化
     void showStats() const;//碎片统计
+    MemoryStats getStats() const;// 统计数据（便于 compare 等功能）
 
 
 private:

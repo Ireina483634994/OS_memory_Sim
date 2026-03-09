@@ -111,19 +111,34 @@ void MemoryManager::showMemoryMap() const {
     }//打印这个内存块的起始地址和结束地址，以及这个内存块是空闲的还是被哪个pid占用的，以及这个内存块的大小
 }
 
-// 统计函数，显示当前内存的碎片情况，包括空闲块数量、总空闲内存大小、最大空闲块大小等信息
-//public成员函数，外部可以使用
-void MemoryManager::showStats() const {
-    int freeCount = 0, freeTotal = 0, maxFree = 0;
+// 统计数据接口，便于 compare 等逻辑复用
+MemoryStats MemoryManager::getStats() const {
+    MemoryStats stats{0, 0, 0, 0.0};
     MemoryBlock* cur = head;
     while (cur) {
         if (cur->isFree) {
-            freeCount++;
-            freeTotal += cur->size;
-            maxFree = std::max(maxFree, cur->size);
+            stats.freeBlocks++;
+            stats.totalFree += cur->size;
+            stats.maxFreeBlock = std::max(stats.maxFreeBlock, cur->size);
         }
         cur = cur->next;
     }
+
+    if (stats.totalFree > 0) {
+        stats.externalFragmentation = 1.0 - static_cast<double>(stats.maxFreeBlock) / static_cast<double>(stats.totalFree);
+    }
+    return stats;
+}
+
+// 统计函数，显示当前内存的碎片情况，包括空闲块数量、总空闲内存大小、最大空闲块大小等信息
+//public成员函数，外部可以使用
+void MemoryManager::showStats() const {
+    MemoryStats stats = getStats();
+    std::cout << "Free Blocks: " << stats.freeBlocks
+              << ", Total Free: " << stats.totalFree
+              << ", Max Free Block: " << stats.maxFreeBlock
+              << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
+              << stats.externalFragmentation << "\n";
     double externalFrag = 0.0;
     if (freeTotal > 0) {
         externalFrag = 1.0 - static_cast<double>(maxFree) / static_cast<double>(freeTotal);

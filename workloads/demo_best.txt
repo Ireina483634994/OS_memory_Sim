@@ -1,0 +1,11 @@
+# 场景：空洞大小不一，适合观察 best-fit
+alloc 10 200
+alloc 11 120
+alloc 12 220
+free 11
+alloc 13 60
+alloc 14 50
+free 10
+alloc 15 180
+show
+stats

@@ -1,0 +1,9 @@
+# 场景：演示 first-fit 下产生外部碎片
+alloc 1 120
+alloc 2 300
+alloc 3 100
+free 2
+alloc 4 80
+alloc 5 180
+show
+stats

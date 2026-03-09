@@ -32,9 +32,28 @@ void MemoryManager::clearAll() {
 }
 
 
+// 参数校验：请求大小需大于 0，pid 需非负
+bool MemoryManager::isValidRequest(int pid, int reqSize) const {
+    if (pid < 0) {
+        std::cout << "Error: PID must be non-negative.\n";
+        return false;
+    }
+    if (reqSize <= 0) {
+        std::cout << "Error: requested size must be positive.\n";
+        return false;
+    }
+    if (reqSize > totalSize) {
+        std::cout << "Error: requested size exceeds total memory size.\n";
+        return false;
+    }
+    return true;
+}
+
 // 分配函数，要从内存的空闲区域分配reqSize大小的内存给pid的进程使用，使用algo策略（成功返回true，失败返回false）
 //这是一个public成员，外部可以使用
 bool MemoryManager::allocate(int pid, int reqSize, Algorithm algo) {
+    if (!isValidRequest(pid, reqSize)) return false;
+
     if (pidMap.count(pid) > 0) {
         std::cout << "Error: PID " << pid << " already allocated.\n";
         return false;
@@ -61,6 +80,11 @@ bool MemoryManager::allocate(int pid, int reqSize, Algorithm algo) {
 // 释放函数，要释放pid占用的内存，注意合并相邻空闲块
 //public成员函数，外部可以使用
 void MemoryManager::deallocate(int pid) {
+    if (pid < 0) {
+        std::cout << "Warning: PID must be non-negative.\n";
+        return;
+    }
+
     auto it = pidMap.find(pid);
     if (it == pidMap.end()) {
         std::cout << "Warning: PID " << pid << " not found.\n";
@@ -100,9 +124,16 @@ void MemoryManager::showStats() const {
         }
         cur = cur->next;
     }
+    double externalFrag = 0.0;
+    if (freeTotal > 0) {
+        externalFrag = 1.0 - static_cast<double>(maxFree) / static_cast<double>(freeTotal);
+    }
+
     std::cout << "Free Blocks: " << freeCount
               << ", Total Free: " << freeTotal
-              << ", Max Free Block: " << maxFree << "\n";
+              << ", Max Free Block: " << maxFree
+              << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
+              << externalFrag << "\n";
 }
 
 

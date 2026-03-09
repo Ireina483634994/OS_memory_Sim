@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug C++ (LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/sim",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build cpp project"
+    }
+  ]
+}

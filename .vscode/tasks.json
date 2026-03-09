@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build cpp project",
+            "type": "shell",
+            "command": "/usr/bin/clang++",
+            "args": [
+                "-g",
+                "src/*.cpp",
+                "-I",
+                "include",
+                "-o",
+                "sim"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}

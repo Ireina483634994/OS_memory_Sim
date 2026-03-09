@@ -5,7 +5,6 @@
 #include <cstddef>        // 为了使用 size_t
 #include <limits>
 #include <unordered_map>
-#include <vector>
 
 // 内存块结构（保持原样）
 struct MemoryBlock {
@@ -33,7 +32,7 @@ public:
     MemoryManager(const MemoryManager&) = delete;
     MemoryManager& operator=(const MemoryManager&) = delete;
 
-    
+
     // 核心接口
     bool allocate(int pid, int reqSize, Algorithm algo);// 分配 reqSize 大小的内存给 pid，使用 algo 策略（成功返回 true，失败返回 false）
 
@@ -50,8 +49,7 @@ private:
     int totalSize;// 管理的总内存大小
 
     
-    std::unordered_map<int, MemoryBlock*> pidMap;// 在一个进程释放内存时，为了快速释放，用 进程的pid -> block 映射（若一个 pid 可能占多个块，需要映射到 vector）
-
+    std::unordered_map<int, MemoryBlock*> pidMap;// 在一个进程释放内存时，为了快速释放，用 进程的pid -> block 映射
     // 3种算法的查找合适的空闲内存块的策略（遍历链表），返回合适的空闲内存块的指针（如果没有合适的块，返回 nullptr）
     //函数的参数req进程需要的内存大小，返回值是指向合适的MemoryBlock的指针；
     MemoryBlock* findFirstFit(int req) const;
@@ -64,12 +62,6 @@ private:
     void splitBlock(MemoryBlock* block, int req);    // 将 一个空闲块block 切分出 req 的前/后部分
     //这里的splitBlock函数是将合适的空闲block进行切分，block的大小可能大于等于req，如果大于req，就切分出一个大小为req的块来分配给进程，剩余的部分继续作为一个空闲块存在链表中；如果block的大小等于req，就直接分配给进程，不需要切分。
     void coalesce(MemoryBlock* block);               // 合并 block 与相邻空闲块（prev/next）
-    void removeNode(MemoryBlock* node);              // 从链表中移除并 delete node
-    void insertAfter(MemoryBlock* pos, MemoryBlock* node);
-
-    MemoryBlock* findBlockByPid(int pid) const;     // 用 pidMap 快速定位这个进程的块所在位置（如果一个 pid 可能占多个块，返回第一个找到的块）
-    std::vector<MemoryBlock*> snapshotFreeBlocks() const;
-
     void clearAll();                                 // 析构时清理链表
 };
 

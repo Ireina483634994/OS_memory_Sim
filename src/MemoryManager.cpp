@@ -1,6 +1,6 @@
 #include "../include/MemoryManager.h"
 #include <iomanip>
-#include <algorithm>  // std::max
+#include <algorithm>  // 我们使用了std::max这个函数
 
 
 
@@ -38,19 +38,19 @@ bool MemoryManager::allocate(int pid, int reqSize, Algorithm algo) {
     if (pidMap.count(pid) > 0) {
         std::cout << "Error: PID " << pid << " already allocated.\n";
         return false;
-    }
+    }//说明之前pid已经分配了内存，不能重复分配
 
     MemoryBlock* block = nullptr;
     switch (algo) {
         case Algorithm::FIRST_FIT:  block = findFirstFit(reqSize); break;
         case Algorithm::BEST_FIT:   block = findBestFit(reqSize); break;
         case Algorithm::WORST_FIT:  block = findWorstFit(reqSize); break;
-    }
+    }//使得block按照算法指示的方式找到一个合适的空闲块，如果没有找到合适的块，block就会是nullptr
 
-    if (!block) return false; // 没有找到可用块
+    if (!block) return false; // 没有找到可用块，比如当前内存碎片过多，无法满足reqSize的连续内存需求，或者本身reqsize过大
 
-    splitBlock(block, reqSize);
-    block->processId = pid;
+    splitBlock(block, reqSize);//对指定的block，在block当中切分出一个大小为reqSize的块来分配给pid（将block的前部分给进程，后半部分是空闲的），剩余的部分继续作为一个空闲块存在链表中；如果block的大小等于reqSize，就直接分配给pid，不需要切分
+    block->processId = pid;//说明block的前半部分分配给了进程pid，因此这个block就不再是空闲的了，设置isFree为false，并且记录这个block是被哪个pid占用的
     block->isFree = false;
 
     pidMap[pid] = block;
@@ -77,14 +77,14 @@ void MemoryManager::deallocate(int pid) {
 // 可视化函数，显示当前内存的分布情况，使用ASCII字符表示空闲块和占用块
 //public成员函数，外部可以使用
 void MemoryManager::showMemoryMap() const {
-    std::cout << "Memory Map:\n";
+    std::cout << "内存可视化:\n";
     MemoryBlock* cur = head;
     while (cur) {
         std::cout << "[" << cur->startAddr << ", " << cur->startAddr + cur->size - 1 << "] "
-                  << (cur->isFree ? "Free" : "PID " + std::to_string(cur->processId))
+                  << (cur->isFree ? "Free" : "PID: " + std::to_string(cur->processId))
                   << " | Size: " << cur->size << "\n";
         cur = cur->next;
-    }
+    }//打印这个内存块的起始地址和结束地址，以及这个内存块是空闲的还是被哪个pid占用的，以及这个内存块的大小
 }
 
 // 统计函数，显示当前内存的碎片情况，包括空闲块数量、总空闲内存大小、最大空闲块大小等信息
@@ -110,6 +110,7 @@ void MemoryManager::showStats() const {
 //接下来是private成员函数的实现，包括查找算法和切分/合并操作，这些函数只能在类的内部被调用，外部无法访问
 
 // -------------------- 查找算法 --------------------
+//首次适应算法，只需从头开始遍历Block链表，找到第一个空闲的且size>=req的块就返回这个块的指针，如果没有找到合适的块就返回nullptr
 MemoryBlock* MemoryManager::findFirstFit(int req) const {
     MemoryBlock* cur = head;
     while (cur) {
@@ -118,7 +119,7 @@ MemoryBlock* MemoryManager::findFirstFit(int req) const {
     }
     return nullptr;
 }
-
+//最佳适应算法，我们需要遍历整个Block链表，找到所有空闲的且size>=req的块，比较它们的size，找到size最小的那个块返回它的指针，如果没有找到合适的块就返回nullptr
 MemoryBlock* MemoryManager::findBestFit(int req) const {
     MemoryBlock* cur = head;
     MemoryBlock* best = nullptr;
@@ -132,7 +133,7 @@ MemoryBlock* MemoryManager::findBestFit(int req) const {
     }
     return best;
 }
-
+//最坏适应算法，我们需要遍历整个Block链表，找到所有空闲的且size>=req的块，比较它们的size，找到size最大的那个块返回它的指针，如果没有找到合适的块就返回nullptr
 MemoryBlock* MemoryManager::findWorstFit(int req) const {
     MemoryBlock* cur = head;
     MemoryBlock* worst = nullptr;
@@ -148,6 +149,8 @@ MemoryBlock* MemoryManager::findWorstFit(int req) const {
 }
 
 // -------------------- 切分 / 合并 --------------------
+
+// 切分函数，将一个指定的空闲块block摘出req大小的前部分来分配给进程，剩余的部分继续作为一个空闲块存在链表中（额外创建一个block插入相应位置）；如果block的大小等于req，就直接将block自己分配给进程，不需要切分
 void MemoryManager::splitBlock(MemoryBlock* block, int req) {
     if (!block || block->size <= req) return;
 
@@ -155,7 +158,7 @@ void MemoryManager::splitBlock(MemoryBlock* block, int req) {
     MemoryBlock* remainder = new MemoryBlock(block->startAddr + req, block->size - req);
     remainder->isFree = true;
     remainder->prev = block;
-    remainder->next = block->next;
+    remainder->next = block->next;//remainder插在block和block->next之间
     if (block->next) block->next->prev = remainder;
     block->next = remainder;
     block->size = req;
@@ -164,6 +167,7 @@ void MemoryManager::splitBlock(MemoryBlock* block, int req) {
 void MemoryManager::coalesce(MemoryBlock* block) {
     if (!block) return;
 
+    //对于传入的block，已经是个空闲块，我们需要看看它的前驱和后继是否也是空闲的，从而进行合并
     // 向前合并
     if (block->prev && block->prev->isFree) {
         MemoryBlock* L = block->prev;

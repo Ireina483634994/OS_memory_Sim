@@ -10,6 +10,7 @@
 - `include/MemoryManager.h`：核心数据结构与接口
 - `src/MemoryManager.cpp`：分配/释放/合并/统计实现
 - `src/main.cpp`：CLI 与 workload/compare 框架
+- `workloads/*.txt`：演示脚本（含 first/best/worst/compare）
 - `workloads/*.txt`：演示脚本
 
 ## 编译
@@ -52,6 +53,7 @@ g++ -std=c++17 -Iinclude src/main.cpp src/MemoryManager.cpp -o sim
 
 ```bash
 runworkload workloads/demo_first.txt
+runworkload workloads/demo_worst.txt
 compare workloads/demo_compare.txt
 ```
 

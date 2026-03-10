@@ -1,34 +1,49 @@
 # demo_compare.txt - 用于比较三种内存分配策略的workload
-# 这个workload设计用于突出first fit, best fit, worst fit的差异
-# 首先分配几个中等大小的块，创建一些碎片，然后释放部分块
-# 最后分配大块，观察不同策略如何处理碎片和分配
+# 设计突出first fit, best fit, worst fit的差异
+# first fit: 保留高地址大分区，有利于大进程；低地址碎片多
+# best fit: 产生最多碎片（小块多）
+# worst fit: 不利于大进程（大块被分割）
 
-# 初始分配：创建一些中等大小的块
-alloc 1 150
-alloc 2 200
-alloc 3 100
-alloc 4 250
-alloc 5 120
+# 初始分配中等块
+alloc 1 100
+alloc 2 150
+alloc 3 200
+alloc 4 120
 
-# 释放中间的块，创建碎片
-free 2
-free 4
+# 释放部分，创建碎片
+free 2  # 释放150块，创建碎片
+free 4  # 释放120块
 
-# 现在内存中有碎片：0-150(1), 150-350(free), 350-450(3), 450-600(free), 600-720(5), 720-end(free)
+# 现在分配中等块，观察策略选择
+alloc 5 80   # first fit选第一个合适(150-350), best fit选最小合适, worst fit选最大
+alloc 6 60   # 继续分配
 
-# 分配中等大小的块，看不同策略的选择
-alloc 6 180  # first fit会选第一个足够大的(150-350), best fit会选最小的合适(450-600), worst fit选最大的
-alloc 7 80   # 继续分配小块
-
-# 释放更多块，增加碎片
+# 释放更多，增加碎片复杂性
 free 1
 free 3
 
-# 尝试分配一个大块，看哪种策略能成功
-alloc 8 300  # 这个大块需要合并碎片或找大块
+# 分配多个小块，增加碎片复杂性（best fit会产生更多小碎片）
+alloc 7 30
+alloc 8 40
+alloc 9 25
+alloc 10 35
+alloc 13 20
+alloc 14 45
 
-# 显示最终内存分布
+# 释放一些，创建更多小碎片
+free 5
+free 7
+free 9
+free 13
+
+# 现在尝试分配大块，（体现first保留大分区，worst分割大块）
+alloc 15 250  # 大块分配
+
+# 最后分配中等块，观察碎片影响
+alloc 16 100
+
+# 显示最终分布
 show
 
-# 显示统计信息
+# 显示统计
 stats

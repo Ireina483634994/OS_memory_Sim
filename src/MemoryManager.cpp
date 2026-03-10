@@ -105,9 +105,14 @@ void MemoryManager::showMemoryMap() const {
     std::cout << "内存可视化:\n";
     MemoryBlock* cur = head;
     while (cur) {
-        std::cout << "[" << cur->startAddr << ", " << cur->startAddr + cur->size - 1 << "] "
-                  << (cur->isFree ? "Free" : "PID: " + std::to_string(cur->processId))
-                  << " | Size: " << cur->size << "\n";
+        std::cout << "[" << std::setw(4) << std::setfill('0') << cur->startAddr << ", " 
+                  << std::setw(4) << std::setfill('0') << (cur->startAddr + cur->size - 1) << "] ";
+        if (cur->isFree) {
+            std::cout << std::left << std::setw(10) << "Free";
+        } else {
+            std::cout << std::left << std::setw(10) << ("PID: " + std::to_string(cur->processId));
+        }
+        std::cout << " | Size: " << std::setw(4) << cur->size << "\n";
         cur = cur->next;
     }//打印这个内存块的起始地址和结束地址，以及这个内存块是空闲的还是被哪个pid占用的，以及这个内存块的大小
 }

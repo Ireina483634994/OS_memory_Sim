@@ -60,8 +60,8 @@ void printHelp() {//打印帮助信息，告诉用户当前有哪些命令可以
         << "alloc <pid> <size>                : 按当前策略分配\n"
         << "free <pid>                        : 释放该 PID 占用内存\n"
         << "set strategy first|best|worst     : 切换分配策略\n"
-        << "runworkload <file>                : 执行 workload 脚本\n"
-        << "compare <file>                    : 同一 workload 对比三种策略\n"
+        << "runworkload <file>                : 执行 workload 脚本（文件名不带路径和.txt后缀）\n"
+        << "compare <file>                    : 同一 workload 对比三种策略（文件名不带路径和.txt后缀）\n"
         << "reset <memory_size>               : 重置内存管理器，并将内存大小设置为指定值\n"
         << "\nworkload 文件支持命令:\n"
         << "  alloc <pid> <size>\n"
@@ -248,7 +248,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Usage: runworkload <file>\n";
                 continue;
             }
-           file = normalizeFileName(file);
+           file = "workloads/" + normalizeFileName(file);
             WorkloadResult r = runWorkload(*manager, currentStrategy, file, true);
             std::cout << "runworkload done. ops=" << r.executedOps << ", success=" << (r.success ? "yes" : "no") << "\n";
         } else if (cmd == "compare") {//对比workload的命令，用户可以输入compare <file>来对同一个workload文件使用三种不同的内存分配策略进行执行，并比较它们的统计结果，如果文件无法打开或者解析错误就打印错误信息
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]) {
                 std::cout << "Usage: compare <file>\n";
                 continue;
             }
-            file = normalizeFileName(file);
+            file = "workloads/" + normalizeFileName(file);
             compareWorkload(totalMemorySize, file);
         } else if (cmd == "reset") {
             int newSize = 0;

@@ -5,5 +5,9 @@ alloc 3 100
 free 2
 alloc 4 80
 alloc 5 180
+
+#显示内存分布
 show
+
+#显示统计信息
 stats

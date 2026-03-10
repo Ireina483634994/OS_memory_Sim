@@ -13,16 +13,16 @@
 namespace {
 
 struct WorkloadResult {
-    bool success = true;
-    int executedOps = 0;
+    bool success = true;// workload是否成功执行完毕（如果中途有命令解析错误或者执行错误就标记为false）
+    int executedOps = 0;// 成功执行的命令数量（不包括解析错误或者执行错误的命令）
 };
 
 std::string toLower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });//将字符串s当中的每个字符都转换为小写字母，返回转换后的字符串
     return s;
 }
 
-Algorithm parseStrategy(const std::string& raw) {
+Algorithm parseStrategy(const std::string& raw) {//将字符串raw解析为对应的Algorithm枚举值，如果无法解析就默认返回Algorithm::FIRST_FIT
     const std::string s = toLower(raw);
     if (s == "first") return Algorithm::FIRST_FIT;
     if (s == "best") return Algorithm::BEST_FIT;
@@ -30,12 +30,12 @@ Algorithm parseStrategy(const std::string& raw) {
     return Algorithm::FIRST_FIT;
 }
 
-bool isStrategyName(const std::string& raw) {
+bool isStrategyName(const std::string& raw) {//判断字符串raw是否是合法的策略名称（first、best、worst），不区分大小写，如果是合法的策略名称就返回true，否则返回false
     const std::string s = toLower(raw);
     return s == "first" || s == "best" || s == "worst";
 }
 
-std::string strategyName(Algorithm s) {
+std::string strategyName(Algorithm s) {//将Algorithm枚举值转换为对应的字符串名称（first、best、worst），如果枚举值不合法就默认返回"first"
     switch (s) {
         case Algorithm::FIRST_FIT: return "first";
         case Algorithm::BEST_FIT: return "best";
@@ -44,7 +44,7 @@ std::string strategyName(Algorithm s) {
     return "first";
 }
 
-void printHelp() {
+void printHelp() {//打印帮助信息，告诉用户当前有哪些命令可以使用，以及这些命令的用法和功能
     std::cout
         << "\n==== Memory Manager CLI ====\n"
         << "help                              : 显示帮助\n"
@@ -66,9 +66,10 @@ void printHelp() {
 }
 
 WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std::string& file, bool verbose = true) {
+    //这个函数的作用是读取指定的workload文件，逐行解析并执行其中的命令，使用给定的MemoryManager实例和分配策略来执行分配和释放操作，同时统计执行结果并返回一个WorkloadResult结构体来表示执行是否成功以及执行了多少条命令
     WorkloadResult result;
 
-    std::ifstream in(file);
+    std::ifstream in(file);//打开指定的workload文件进行读取，如果文件无法打开就打印错误信息并返回一个标记为失败的WorkloadResult
     if (!in) {
         std::cout << "Error: cannot open workload file: " << file << "\n";
         result.success = false;
@@ -77,33 +78,34 @@ WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std
 
     std::string line;
     int lineNo = 0;
-    while (std::getline(in, line)) {
-        ++lineNo;
+    while (std::getline(in, line)) {//使用getline函数逐行读取workload文件中的命令，解析并执行这些命令
+        ++lineNo;//lineNo变量用于记录当前正在处理的命令行号，便于在解析错误或者执行错误时提供更具体的错误信息
         std::string trimmed = line;
         trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char c) { return !std::isspace(c); }));
-        if (trimmed.empty() || trimmed[0] == '#') continue;
+        if (trimmed.empty() || trimmed[0] == '#') continue;//如果这一行是空行或者注释行（以#开头），就跳过不执行
 
-        std::istringstream iss(trimmed);
-        std::string cmd;
+        std::istringstream iss(trimmed);//将这一行的内容放入一个istringstream对象中，方便后续解析命令和参数
+        std::string cmd;//从istringstream对象中读取第一个单词作为命令名称，并将其转换为小写字母，方便后续比较命令类型
         iss >> cmd;
         cmd = toLower(cmd);
 
         if (cmd == "alloc") {
             int pid = -1, sz = 0;
-            if (!(iss >> pid >> sz)) {
+            if (!(iss >> pid >> sz)) {//如果命令是alloc，那么需要从istringstream对象中读取两个参数，分别是pid和size，如果读取失败（比如参数缺失或者格式错误），就打印错误信息并标记执行结果为失败
                 std::cout << "Workload parse error (line " << lineNo << "): alloc <pid> <size>\n";
                 result.success = false;
                 break;
             }
             const bool ok = manager.allocate(pid, sz, strategy);
-            if (verbose) {
+            if (verbose) {//如果verbose参数为true，那么在执行每条命令后都会打印执行的结果，比如对于alloc命令，会打印分配是否成功，以及分配的pid和size等信息
+                //verbose==true,则进入调试模式；verbose==false,则进入正常模式，不打印每条命令的执行结果；在正常模式下，我们只关心最终的统计结果，而不需要看到每条命令的执行细节；在调试模式下，我们可以看到每条命令的执行结果，便于排查问题或者理解内存分配的过程
                 std::cout << "[line " << lineNo << "] alloc " << pid << " " << sz
                           << (ok ? " -> OK" : " -> FAIL") << "\n";
             }
             result.executedOps++;
         } else if (cmd == "free") {
             int pid = -1;
-            if (!(iss >> pid)) {
+            if (!(iss >> pid)) {//如果命令是free，那么需要从istringstream对象中读取一个参数pid，如果读取失败（比如参数缺失或者格式错误），就打印错误信息并标记执行结果为失败
                 std::cout << "Workload parse error (line " << lineNo << "): free <pid>\n";
                 result.success = false;
                 break;
@@ -125,7 +127,7 @@ WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std
                 manager.showStats();
             }
             result.executedOps++;
-        } else {
+        } else {//如果命令名称不匹配任何已知的命令类型，就打印错误信息并标记执行结果为失败
             std::cout << "Workload parse error (line " << lineNo << "): unknown command '" << cmd << "'\n";
             result.success = false;
             break;
@@ -135,6 +137,7 @@ WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std
     return result;
 }
 
+
 void compareWorkload(int totalMemorySize, const std::string& file) {
     const std::vector<Algorithm> strategies = {
         Algorithm::FIRST_FIT,
@@ -142,7 +145,7 @@ void compareWorkload(int totalMemorySize, const std::string& file) {
         Algorithm::WORST_FIT
     };
 
-    std::cout << "\n=== Compare workload: " << file << " (memory=" << totalMemorySize << ") ===\n";
+    std::cout << "\n=== Compare workload: " << file << " (memory=" << totalMemorySize << ") ===\n";//这个函数的作用是对同一个workload文件，使用三种不同的内存分配策略（首次适应、最佳适应、最差适应）来执行workload中的命令，并收集每种策略执行后的内存统计数据，最后将这些数据以表格的形式打印出来，方便比较不同策略在同一workload下的表现差异
     std::cout << std::left << std::setw(10) << "strategy"
               << std::setw(12) << "ops"
               << std::setw(10) << "ok"

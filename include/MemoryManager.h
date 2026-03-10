@@ -6,7 +6,7 @@
 #include <limits>
 #include <unordered_map>
 
-// 内存块结构（保持原样）
+// 内存块结构
 struct MemoryBlock {
     int startAddr;      // 起始地址
     int size;           // 块大小
@@ -22,11 +22,11 @@ struct MemoryBlock {
 enum class Algorithm { FIRST_FIT, BEST_FIT, WORST_FIT };
 
 
-struct MemoryStats {
-    int freeBlocks;
-    int totalFree;
-    int maxFreeBlock;
-    double externalFragmentation;
+struct MemoryStats {// 内存统计数据结构
+    int freeBlocks;// 空闲块数量
+    int totalFree;// 总空闲内存大小
+    int maxFreeBlock; // 最大空闲块大小
+    double externalFragmentation; // 外部碎片率 = (总空闲内存大小 - 最大空闲块大小) / 总空闲内存大小
 };
 
 class MemoryManager {

@@ -32,7 +32,7 @@ void MemoryManager::clearAll() {
 }
 
 
-// 参数校验：请求大小需大于 0，pid 需非负
+// 对输入参数的校验：请求大小需大于 0，pid 需非负
 bool MemoryManager::isValidRequest(int pid, int reqSize) const {
     if (pid < 0) {
         std::cout << "Error: PID must be non-negative.\n";
@@ -52,12 +52,12 @@ bool MemoryManager::isValidRequest(int pid, int reqSize) const {
 // 分配函数，要从内存的空闲区域分配reqSize大小的内存给pid的进程使用，使用algo策略（成功返回true，失败返回false）
 //这是一个public成员，外部可以使用
 bool MemoryManager::allocate(int pid, int reqSize, Algorithm algo) {
-    if (!isValidRequest(pid, reqSize)) return false;
+    if (!isValidRequest(pid, reqSize)) return false;//首先对输入参数进行校验，如果不合法就直接返回false
 
     if (pidMap.count(pid) > 0) {
         std::cout << "Error: PID " << pid << " already allocated.\n";
         return false;
-    }//说明之前pid已经分配了内存，不能重复分配
+    }//说明之前pid已经分配了内存，不能重复分配（基于一个进程最多分配一块内存的前提）
 
     MemoryBlock* block = nullptr;
     switch (algo) {
@@ -90,10 +90,11 @@ void MemoryManager::deallocate(int pid) {
         std::cout << "Warning: PID " << pid << " not found.\n";
         return;
     }
+    //说明pidMap当中找到了这个pid对应的block，我们需要将这个block标记为空闲，并且尝试与相邻的空闲块进行合并，最后从pidMap当中删除这个pid的记录
     MemoryBlock* block = it->second;
     block->isFree = true;
     block->processId = -1;
-    coalesce(block);
+    coalesce(block);//尝试与相邻的空闲块进行合并
     pidMap.erase(it);
 }
 
@@ -112,6 +113,7 @@ void MemoryManager::showMemoryMap() const {
 }
 
 // 统计数据接口，便于 compare 等逻辑复用
+//public成员函数，外部可以使用
 MemoryStats MemoryManager::getStats() const {
     MemoryStats stats{0, 0, 0, 0.0};
     MemoryBlock* cur = head;
@@ -139,23 +141,14 @@ void MemoryManager::showStats() const {
               << ", Max Free Block: " << stats.maxFreeBlock
               << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
               << stats.externalFragmentation << "\n";
-    double externalFrag = 0.0;
-    if (freeTotal > 0) {
-        externalFrag = 1.0 - static_cast<double>(maxFree) / static_cast<double>(freeTotal);
-    }
-
-    std::cout << "Free Blocks: " << freeCount
-              << ", Total Free: " << freeTotal
-              << ", Max Free Block: " << maxFree
-              << ", External Fragmentation Ratio: " << std::fixed << std::setprecision(2)
-              << externalFrag << "\n";
+    //我们调用了getStats()函数来获取当前内存的统计数据，然后将这些数据格式化输出到控制台上，显示空闲块数量、总空闲内存大小、最大空闲块大小以及外部碎片率等信息
 }
 
 
 
 //接下来是private成员函数的实现，包括查找算法和切分/合并操作，这些函数只能在类的内部被调用，外部无法访问
 
-// -------------------- 查找算法 --------------------
+
 //首次适应算法，只需从头开始遍历Block链表，找到第一个空闲的且size>=req的块就返回这个块的指针，如果没有找到合适的块就返回nullptr
 MemoryBlock* MemoryManager::findFirstFit(int req) const {
     MemoryBlock* cur = head;
@@ -194,7 +187,6 @@ MemoryBlock* MemoryManager::findWorstFit(int req) const {
     return worst;
 }
 
-// -------------------- 切分 / 合并 --------------------
 
 // 切分函数，将一个指定的空闲块block摘出req大小的前部分来分配给进程，剩余的部分继续作为一个空闲块存在链表中（额外创建一个block插入相应位置）；如果block的大小等于req，就直接将block自己分配给进程，不需要切分
 void MemoryManager::splitBlock(MemoryBlock* block, int req) {

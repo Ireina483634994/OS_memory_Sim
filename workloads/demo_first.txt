@@ -1,4 +1,4 @@
-# 场景：演示 first-fit 下产生外部碎片
+# 命令格式为：操作+进程PID+要求空间大小
 alloc 1 120
 alloc 2 300
 alloc 3 100

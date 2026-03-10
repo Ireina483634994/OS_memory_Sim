@@ -22,6 +22,12 @@ std::string toLower(std::string s) {
     return s;
 }
 
+std::string normalizeFileName(std::string name) {
+    if (name.size() < 4 || name.substr(name.size() - 4) != ".txt") {
+        name += ".txt";
+    }
+    return name;
+}
 Algorithm parseStrategy(const std::string& raw) {//将字符串raw解析为对应的Algorithm枚举值，如果无法解析就默认返回Algorithm::FIRST_FIT
     const std::string s = toLower(raw);
     if (s == "first") return Algorithm::FIRST_FIT;
@@ -56,7 +62,7 @@ void printHelp() {//打印帮助信息，告诉用户当前有哪些命令可以
         << "set strategy first|best|worst     : 切换分配策略\n"
         << "runworkload <file>                : 执行 workload 脚本\n"
         << "compare <file>                    : 同一 workload 对比三种策略\n"
-        << "reset <memory_size>               : 重置管理器（清空所有分配）\n"
+        << "reset <memory_size>               : 重置内存管理器，并将内存大小设置为指定值\n"
         << "\nworkload 文件支持命令:\n"
         << "  alloc <pid> <size>\n"
         << "  free <pid>\n"
@@ -175,7 +181,7 @@ void compareWorkload(int totalMemorySize, const std::string& file) {
 } // namespace
 
 int main(int argc, char* argv[]) {
-    int totalMemorySize = 1024;
+    int totalMemorySize = 1024;//默认的总内存大小是1024，如果用户在命令行参数中指定了一个正整数作为总内存大小，那么就使用用户指定的值来初始化MemoryManager实例，否则就使用默认值1024
     if (argc >= 2) {
         std::istringstream iss(argv[1]);
         int candidate = 0;
@@ -185,18 +191,18 @@ int main(int argc, char* argv[]) {
     }
 
     auto manager = std::make_unique<MemoryManager>(totalMemorySize);
-    Algorithm currentStrategy = Algorithm::FIRST_FIT;
+    Algorithm currentStrategy = Algorithm::FIRST_FIT;//默认使用首次适应算法作为内存分配策略
 
     std::cout << "Memory Manager CLI started. total memory = " << totalMemorySize << "\n";
-    std::cout << "Current strategy: " << strategyName(currentStrategy) << "\n";
+    std::cout << "Current strategy: " << strategyName(currentStrategy) << "\n";//在命令行界面启动时，打印当前使用的内存分配策略，便于用户了解当前的配置状态
     printHelp();
 
     std::string line;
-    while (true) {
-        std::cout << "mm> ";
-        if (!std::getline(std::cin, line)) break;
+    while (true) {//进入一个命令行交互循环，等待用户输入命令，解析并执行这些命令，直到用户输入exit或者quit命令来退出程序
+        std::cout << "mm> ";//打印命令提示符，等待用户输入命令
+        if (!std::getline(std::cin, line)) break;//如果用户输入EOF（比如按Ctrl+D）或者发生输入错误，就退出循环，结束程序
 
-        std::istringstream iss(line);
+        std::istringstream iss(line);//将用户输入的这一行放入一个istringstream对象中，方便后续解析命令和参数
         std::string cmd;
         iss >> cmd;
         if (cmd.empty()) continue;
@@ -208,9 +214,9 @@ int main(int argc, char* argv[]) {
             std::cout << "Bye.\n";
             break;
         } else if (cmd == "show") {
-            manager->showMemoryMap();
+            manager->showMemoryMap();//显示当前内存的分布情况，使用ASCII字符表示空闲块和占用块
         } else if (cmd == "stats") {
-            manager->showStats();
+            manager->showStats();//显示当前内存的碎片情况，包括空闲块数量、总空闲内存大小、最大空闲块大小等信息
         } else if (cmd == "alloc") {
             int pid = -1, sz = 0;
             if (!(iss >> pid >> sz)) {
@@ -226,7 +232,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             manager->deallocate(pid);
-        } else if (cmd == "set") {
+        } else if (cmd == "set") {//切换分配策略的命令，用户可以输入set strategy first|best|worst来切换当前使用的内存分配策略，如果输入的参数不合法就打印错误信息
             std::string subject, strategy;
             iss >> subject >> strategy;
             if (toLower(subject) != "strategy" || !isStrategyName(strategy)) {
@@ -235,22 +241,24 @@ int main(int argc, char* argv[]) {
             }
             currentStrategy = parseStrategy(strategy);
             std::cout << "Strategy switched to: " << strategyName(currentStrategy) << "\n";
-        } else if (cmd == "runworkload") {
+        } else if (cmd == "runworkload") {//执行workload脚本的命令，用户可以输入runworkload <file>来执行指定的workload文件中的命令，如果文件无法打开或者解析错误就打印错误信息
             std::string file;
             iss >> file;
             if (file.empty()) {
                 std::cout << "Usage: runworkload <file>\n";
                 continue;
             }
+           file = normalizeFileName(file);
             WorkloadResult r = runWorkload(*manager, currentStrategy, file, true);
             std::cout << "runworkload done. ops=" << r.executedOps << ", success=" << (r.success ? "yes" : "no") << "\n";
-        } else if (cmd == "compare") {
+        } else if (cmd == "compare") {//对比workload的命令，用户可以输入compare <file>来对同一个workload文件使用三种不同的内存分配策略进行执行，并比较它们的统计结果，如果文件无法打开或者解析错误就打印错误信息
             std::string file;
             iss >> file;
             if (file.empty()) {
                 std::cout << "Usage: compare <file>\n";
                 continue;
             }
+            file = normalizeFileName(file);
             compareWorkload(totalMemorySize, file);
         } else if (cmd == "reset") {
             int newSize = 0;

@@ -1,0 +1,1 @@
+[{"directory": "/Users/yaomengfei/Desktop/OS_memory_Sim", "command": "/usr/bin/clang++ -g -I include src/main.cpp src/MemoryManager.cpp -o sim", "file": "src/main.cpp"}, {"directory": "/Users/yaomengfei/Desktop/OS_memory_Sim", "command": "/usr/bin/clang++ -g -I include src/main.cpp src/MemoryManager.cpp -o sim", "file": "src/MemoryManager.cpp"}]

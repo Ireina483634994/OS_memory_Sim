@@ -1,0 +1,4 @@
+alloc 1 500
+alloc 2 1000
+free 1
+free 2

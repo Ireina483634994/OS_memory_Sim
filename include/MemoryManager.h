@@ -23,10 +23,13 @@ enum class Algorithm { FIRST_FIT, BEST_FIT, WORST_FIT };
 
 
 struct MemoryStats {// 内存统计数据结构
-    int freeBlocks;// 空闲块数量
-    int totalFree;// 总空闲内存大小
-    int maxFreeBlock; // 最大空闲块大小
+    int freeBlocks;          // 空闲块数量
+    int totalFree;           // 总空闲内存大小
+    int maxFreeBlock;        // 最大空闲块大小
     double externalFragmentation; // 外部碎片率 = (总空闲内存大小 - 最大空闲块大小) / 总空闲内存大小
+    int minFreeBlock;        // 最小空闲块大小（如果没有块保持0）
+    double avgFreeBlock;     // 平均空闲块大小
+    double utilization;      // 内存利用率 = (totalSize - totalFree) / totalSize
 };
 
 class MemoryManager {
@@ -42,10 +45,12 @@ public:
 
 
     // 核心接口
-    bool allocate(int pid, int reqSize, Algorithm algo);// 分配 reqSize 大小的内存给 pid，使用 algo 策略（成功返回 true，失败返回 false）
+    // 分配 reqSize 大小的内存给 pid，使用 algo 策略（成功返回 true，失败返回 false）
+    // 如果传入非空的 errMsg 指针，则在失败时填充错误原因
+    bool allocate(int pid, int reqSize, Algorithm algo, std::string* errMsg = nullptr);
 
   
-    void deallocate(int pid);// 释放 pid 占用的内存，注意合并相邻空闲块
+    bool deallocate(int pid, bool verbose = true);// 释放 pid 占用的内存，注意合并相邻空闲块
 
     // 可视化 / 统计
     void showMemoryMap() const;//ASCII可视化

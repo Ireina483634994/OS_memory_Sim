@@ -1,49 +1,26 @@
-# demo_compare.txt - 用于比较三种内存分配策略的workload
-# 设计突出first fit, best fit, worst fit的差异
-# first fit: 保留高地址大分区，有利于大进程；低地址碎片多
-# best fit: 产生最多碎片（小块多）
-# worst fit: 不利于大进程（大块被分割）
+# --- 第一阶段：构造孔洞 [300, 100, 500] ---
+alloc 1 300
+alloc 2 50
+alloc 3 100
+alloc 4 50
+alloc 5 500
+alloc 6 24
 
-# 初始分配中等块
-alloc 1 100
-alloc 2 150
-alloc 3 200
-alloc 4 120
-
-# 释放部分，创建碎片
-free 2  # 释放150块，创建碎片
-free 4  # 释放120块
-
-# 现在分配中等块，观察策略选择
-alloc 5 80   # first fit选第一个合适(150-350), best fit选最小合适, worst fit选最大
-alloc 6 60   # 继续分配
-
-# 释放更多，增加碎片复杂性
 free 1
 free 3
-
-# 分配多个小块，增加碎片复杂性（best fit会产生更多小碎片）
-alloc 7 30
-alloc 8 40
-alloc 9 25
-alloc 10 35
-alloc 13 20
-alloc 14 45
-
-# 释放一些，创建更多小碎片
 free 5
-free 7
-free 9
-free 13
 
-# 现在尝试分配大块，（体现first保留大分区，worst分割大块）
-alloc 15 250  # 大块分配
+# --- 第二阶段：分水岭 ---
+# 请求 80
+# First Fit: 会用掉第一个 300 (地址靠前)，剩下 220
+# Best Fit:  会用掉中间的 100 (最接近)，剩下 20
+alloc 7 80
 
-# 最后分配中等块，观察碎片影响
-alloc 16 100
+# --- 第三阶段：后续压力 ---
+# 请求 250
+# Best Fit 此时还有完整的 300 和 500，非常从容
+# Worst Fit 此时已经把 500 拆了，可能会在后面报错
+alloc 8 250
 
-# 显示最终分布
 show
-
-# 显示统计
 stats

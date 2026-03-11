@@ -15,6 +15,7 @@ namespace {
 struct WorkloadResult {
     bool success = true;// workload是否成功执行完毕（如果中途有命令解析错误或者执行错误就标记为false）
     int executedOps = 0;// 成功执行的命令数量（不包括解析错误或者执行错误的命令）
+    int totalOps = 0;// workloda当中的总命令数量（注释行与空行不计）
 };
 
 std::string toLower(std::string s) {
@@ -62,7 +63,7 @@ void printHelp() {//打印帮助信息，告诉用户当前有哪些命令可以
         << "set strategy first|best|worst     : 切换分配策略\n"
         << "runworkload <file>                : 执行 workload 脚本（文件名不带路径和.txt后缀）\n"
         << "compare <file>                    : 同一 workload 对比三种策略（文件名不带路径和.txt后缀）\n"
-        << "reset <memory_size>               : 重置内存管理器，并将内存大小设置为指定值\n"
+        << "reset <memory_size>               : 重置内存管理器（谨慎操作），并将内存大小设置为指定值\n"
         << "\nworkload 文件支持命令:\n"
         << "  alloc <pid> <size>\n"
         << "  free <pid>\n"
@@ -89,6 +90,8 @@ WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std
         std::string trimmed = line;
         trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](unsigned char c) { return !std::isspace(c); }));
         if (trimmed.empty() || trimmed[0] == '#') continue;//如果这一行是空行或者注释行（以#开头），就跳过不执行
+        // 统计总命令数，无论后续是否执行成功
+        result.totalOps++;
 
         std::istringstream iss(trimmed);//将这一行的内容放入一个istringstream对象中，方便后续解析命令和参数
         std::string cmd;//从istringstream对象中读取第一个单词作为命令名称，并将其转换为小写字母，方便后续比较命令类型
@@ -102,13 +105,21 @@ WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std
                 result.success = false;
                 break;
             }
-            const bool ok = manager.allocate(pid, sz, strategy);
+            std::string reason;
+            const bool ok = manager.allocate(pid, sz, strategy, &reason);
             if (verbose) {//如果verbose参数为true，那么在执行每条命令后都会打印执行的结果，比如对于alloc命令，会打印分配是否成功，以及分配的pid和size等信息
                 //verbose==true,则进入调试模式；verbose==false,则进入正常模式，不打印每条命令的执行结果；在正常模式下，我们只关心最终的统计结果，而不需要看到每条命令的执行细节；在调试模式下，我们可以看到每条命令的执行结果，便于排查问题或者理解内存分配的过程
                 std::cout << "[line " << lineNo << "] alloc " << pid << " " << sz
-                          << (ok ? " -> OK" : " -> FAIL") << "\n";
+                          << (ok ? " -> OK" : " -> FAIL");
+                if (!ok && !reason.empty()) std::cout << " (" << reason << ")";
+                std::cout << "\n";
             }
+            if(ok==false){
+                result.success = false;
+            }
+            else{
             result.executedOps++;
+            }
         } else if (cmd == "free") {
             int pid = -1;
             if (!(iss >> pid)) {//如果命令是free，那么需要从istringstream对象中读取一个参数pid，如果读取失败（比如参数缺失或者格式错误），就打印错误信息并标记执行结果为失败
@@ -116,11 +127,16 @@ WorkloadResult runWorkload(MemoryManager& manager, Algorithm strategy, const std
                 result.success = false;
                 break;
             }
-            manager.deallocate(pid);
+            const bool ok = manager.deallocate(pid, verbose);
             if (verbose) {
-                std::cout << "[line " << lineNo << "] free " << pid << "\n";
+                std::cout << "[line " << lineNo << "] free " << pid
+                          << (ok ? " -> OK" : " -> FAIL") << "\n";
             }
-            result.executedOps++;
+            if(ok==false){
+                result.success = false;
+            }
+            else{
+            result.executedOps++;}
         } else if (cmd == "show") {
             if (verbose) {
                 std::cout << "[line " << lineNo << "] show\n";
@@ -153,12 +169,16 @@ void compareWorkload(int totalMemorySize, const std::string& file) {
 
     std::cout << "\n=== Compare workload: " << file << " (memory=" << totalMemorySize << ") ===\n";//这个函数的作用是对同一个workload文件，使用三种不同的内存分配策略（首次适应、最佳适应、最差适应）来执行workload中的命令，并收集每种策略执行后的内存统计数据，最后将这些数据以表格的形式打印出来，方便比较不同策略在同一workload下的表现差异
     std::cout << std::left << std::setw(10) << "strategy"
-              << std::setw(12) << "ops"
-              << std::setw(10) << "ok"
-              << std::setw(13) << "freeBlocks"
-              << std::setw(12) << "freeTotal"
-              << std::setw(12) << "maxFree"
-              << std::setw(12) << "extFrag" << "\n";
+              << std::setw(12) << "ops" // 成功执行的命令数量
+              << std::setw(12) << "totalops" // 工作流中的总命令数
+              << std::setw(10) << "ok"  // 成功标志
+              << std::setw(13) << "freeBlocks" // 空闲块数量
+              << std::setw(10) << "minFree" // 最小空闲块
+              << std::setw(12) << "maxFree" // 最大空闲块大小
+              << std::setw(10) << "avgFree" // 平均空闲块
+              << std::setw(12) << "freeTotal" // 总空闲内存大小
+              << std::setw(12) << "util" // 利用率
+              << std::setw(12) << "extFrag" << "\n"; // 外部碎片率
 
     for (Algorithm s : strategies) {
         auto manager = std::make_unique<MemoryManager>(totalMemorySize);
@@ -167,10 +187,14 @@ void compareWorkload(int totalMemorySize, const std::string& file) {
 
         std::cout << std::left << std::setw(10) << strategyName(s)
                   << std::setw(12) << r.executedOps
+                  << std::setw(12) << r.totalOps
                   << std::setw(10) << (r.success ? "yes" : "no")
                   << std::setw(13) << st.freeBlocks
-                  << std::setw(12) << st.totalFree
+                  << std::setw(10) << st.minFreeBlock
                   << std::setw(12) << st.maxFreeBlock
+                  << std::setw(10) << std::fixed << std::setprecision(2) << st.avgFreeBlock
+                  << std::setw(12) << st.totalFree
+                  << std::setw(12) << std::fixed << std::setprecision(2) << st.utilization
                   << std::setw(12) << std::fixed << std::setprecision(2) << st.externalFragmentation
                   << "\n";
     }
@@ -223,15 +247,23 @@ int main(int argc, char* argv[]) {
                 std::cout << "Usage: alloc <pid> <size>\n";
                 continue;
             }
-            bool ok = manager->allocate(pid, sz, currentStrategy);
-            std::cout << (ok ? "allocate success\n" : "allocate failed\n");
+            std::string reason;
+            bool ok = manager->allocate(pid, sz, currentStrategy, &reason);
+            if (ok) {
+                std::cout << "allocate success\n";
+            } else {
+                std::cout << "allocate failed";
+                if (!reason.empty()) std::cout << ": " << reason;
+                std::cout << "\n";
+            }
         } else if (cmd == "free") {
             int pid = -1;
             if (!(iss >> pid)) {
                 std::cout << "Usage: free <pid>\n";
                 continue;
             }
-            manager->deallocate(pid);
+            bool ok = manager->deallocate(pid, true);
+            std::cout << (ok ? "free success\n" : "free failed\n");
         } else if (cmd == "set") {//切换分配策略的命令，用户可以输入set strategy first|best|worst来切换当前使用的内存分配策略，如果输入的参数不合法就打印错误信息
             std::string subject, strategy;
             iss >> subject >> strategy;
@@ -250,7 +282,9 @@ int main(int argc, char* argv[]) {
             }
            file = "workloads/" + normalizeFileName(file);
             WorkloadResult r = runWorkload(*manager, currentStrategy, file, true);
-            std::cout << "runworkload done. ops=" << r.executedOps << ", success=" << (r.success ? "yes" : "no") << "\n";
+            std::cout << "runworkload done. ops=" << r.executedOps
+                      << ", totalops=" << r.totalOps
+                      << ", success=" << (r.success ? "yes" : "no") << "\n";
         } else if (cmd == "compare") {//对比workload的命令，用户可以输入compare <file>来对同一个workload文件使用三种不同的内存分配策略进行执行，并比较它们的统计结果，如果文件无法打开或者解析错误就打印错误信息
             std::string file;
             iss >> file;
@@ -267,7 +301,7 @@ int main(int argc, char* argv[]) {
                 continue;
             }
             totalMemorySize = newSize;
-            manager = std::make_unique<MemoryManager>(totalMemorySize);
+            manager = std::make_unique<MemoryManager>(totalMemorySize);//重置MemoryManager实例，并将内存大小设置为用户指定的值，注意由于manager的重置，之前的内存状态和统计数据都会被清除，所以需要重新初始化一个新的MemoryManager实例来管理内存
             std::cout << "Manager reset. total memory = " << totalMemorySize << "\n";
         } else {
             std::cout << "Unknown command: " << cmd << " (type help)\n";

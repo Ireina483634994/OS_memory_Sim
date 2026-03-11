@@ -52,8 +52,8 @@ g++ -std=c++17 -Iinclude src/main.cpp src/MemoryManager.cpp -o sim
 示例：
 
 ```bash
-runworkload workloads/demo_first.txt
-runworkload workloads/demo_worst.txt
-compare workloads/demo_compare.txt
+runworkload demo_first
+runworkload demo_worst
+compare demo_compare
 ```
 
